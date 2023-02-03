@@ -56,6 +56,9 @@ replace highschool = 1 if educd >= 30 & educd < 65
 g college = 0
 replace college = 1 if educd >= 65
 
+* Drop if works but does not receive a wage
+drop if real_incwage == 0 & employed == 1
+
 * We will not use all these variables
 drop Price_Index
 drop educd
