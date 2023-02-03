@@ -44,6 +44,9 @@ generate real_hhincome = hhincome * 100 / ( Price_Index )
 generate real_incwage = incwage * 100 / ( Price_Index )
 generate real_incwage_sp = incwage_sp * 100 / ( Price_Index )
 
+generate incnonlabor = real_hhincome - real_incwage - real_incwage_sp
+drop if incnonlabor < 0
+
 * Educ related variables
 drop if educd <=1
 drop if educd == 999
