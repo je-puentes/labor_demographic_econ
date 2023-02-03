@@ -1,6 +1,10 @@
 * Keep variables
 keep year empstat hhincome incwage incwage_sp educd age nchild
 
+* Age restriction
+drop if age > 55
+drop if age < 25
+
 * Keep employed and non employed workers
 drop if empstat == 0 | empstat == 3
 
