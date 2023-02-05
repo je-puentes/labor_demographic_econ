@@ -1,6 +1,10 @@
 * Keep variables
 keep year empstat hhincome incwage incwage_sp educd age nchild
 
+* Age restriction
+drop if age > 55
+drop if age < 25
+
 * Keep employed and non employed workers
 drop if empstat == 0 | empstat == 3
 
@@ -39,6 +43,9 @@ drop if incwage_sp < 0
 generate real_hhincome = hhincome * 100 / ( Price_Index )
 generate real_incwage = incwage * 100 / ( Price_Index )
 generate real_incwage_sp = incwage_sp * 100 / ( Price_Index )
+
+generate incnonlabor = real_hhincome - real_incwage - real_incwage_sp
+drop if incnonlabor < 0
 
 * Educ related variables
 drop if educd <=1
