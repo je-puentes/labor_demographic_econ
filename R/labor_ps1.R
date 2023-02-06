@@ -8,7 +8,7 @@ library(tidyverse) # Package for everything
 library(haven)     # Package for reading dta files 
 library(ggthemes)  # Package for themes
 library(lubridate) # Converts to date format
-
+library(np)
 
 # Importing data ----------------------------------------------------------
 
@@ -28,7 +28,9 @@ data_ps1 <- readRDS(file =  "data_ps1.rds")
 # Creates real values of wages
 data_ps1 <- data_ps1 %>%
   mutate(real_hhincome = (hhincome*100) / Price_Index,
-         working = ifelse(empstat == 1, 1, ifelse( empstat == 2,0, 3))) 
+         real_wage = (incwage * 100) / Price_Index,
+         labor_par = ifelse(empstat %in% c(1,2),1, ifelse( empstat == 3 ,0, NA)),
+         non_labor_income = real_hhincome - real_wage)
   
 
 # Question 1 --------------------------------------------------------------
@@ -84,13 +86,21 @@ ggplot(year_mean_wage, aes(x = year
   
 # Subseting for married women between 25-55
   m_women_25_55 <- data_ps1 %>%
-    filter(age %in% 25:55, marst %in% c(1,2), hhincome >=0)
-
+    filter(age %in% 25:55, marst %in% c(1,2), hhincome >=0,
+           !is.na(non_labor_income),
+           !is.na(age),
+           !is.na(nchild)) %>%
+    mutate(n_child = as.numeric(nchild),
+           educ = as.numeric(educ))
+summary(lm(labor_par ~ non_labor_income  + educ 
+   + age + nchild, data = m_women_25_55))
 
 # Step 1: Non-parametric estimation of Pr(P = 1 | y,z,x) ------------------
 # a)  Non-parametrically estimate Pr(P = 1|y, z, x) using a kernel regression 
   # where z includes completed education and age and x includes a constant, 
   # age and current number of children
   
-  
-
+bw_par <- (formula = factor(labor_par) ~ non_labor_income  + educ 
+                      + age + n_child,
+                        data = m_women_25_55,
+                      regtype = "ll")
