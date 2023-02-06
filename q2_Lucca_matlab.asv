@@ -1,0 +1,159 @@
+clear
+clc
+q2 = readmatrix("C:\Users\lucca\OneDrive\Documentos\labor\dataq2.csv");
+q2 = array2table(q2, 'VariableNames', {'year', 'nchild', 'age','employed','real_incwage','incnonlabor','elementary','highschool','college'});
+%% 1.a) no constant
+% Considering educ
+% Do nonparametrical estimation for each educational level
+elementary = q2(~(q2.elementary==0),:);
+n=size(elementary(:,1),1);
+Pe = elementary(1:n,4);
+xe = elementary(1:n, [2 3]);
+Pe = table2array(Pe);
+xe = table2array(xe);
+grid = [linspace(0,9,31)' linspace(25,55,31)'];
+[P_hatel,bd,w,z] = BiKreg(xe,Pe,grid,n,[1 1]);
+%% Graph with our own function graphkernel
+graphkernel(w,z,Pe,P_hatel,xe,n,1)
+%% P_hat for each obs
+% rows are for age
+prob = zeros(n,1);
+for i = 1:n %row
+    [C,I] = min(abs(grid(:,1) - xe(i,1))); %closest to the actual nchild
+    prob(i) = P_hatel(xe(i,2)-24,I);
+end
+prob = array2table(prob);
+% Attach probability
+elementary = [elementary prob];
+%% High School
+hs = q2(~(q2.highschool==0),:);
+n=size(hs(:,1),1);
+Ph = hs(1:n,4);
+xh = hs(1:n, [2 3]);
+Ph = table2array(Ph);
+xh = table2array(xh);
+[P_hath,bd,w,z] = BiKreg(xh,Ph,grid,n,[1 1]);
+%% Graph
+graphkernel(w,z,Ph,P_hath,xh,n,2)
+%% P_hat for each obs
+% rows are for age
+prob = zeros(n,1);
+for i = 1:n %row
+    [C,I] = min(abs(grid(:,1) - xh(i,1))); %closest to the actual nchild
+    prob(i) = P_hath(xh(i,2)-24,I);
+end
+prob = array2table(prob);
+% Attach probability
+hs = [hs prob];
+%% College
+college = q2(~(q2.college==0),:);
+n=size(college(:,1),1);
+Pc = college(1:n,4);
+xc = college(1:n, [2 3]);
+Pc = table2array(Pc);
+xc = table2array(xc);
+[P_hatc,bd,w,z] = BiKreg(xc,Pc,grid,n,[1 1]);
+%% Graph
+graphkernel(w,z,Pc,P_hatc,xc,n,3)
+%% P_hat for each obs
+% rows are for age
+prob = zeros(n,1);
+for i = 1:n %row
+    [C,I] = min(abs(grid(:,1) - xc(i,1))); %closest to the actual nchild
+    prob(i) = P_hatc(xc(i,2)-24,I);
+end
+prob = array2table(prob);
+% Attach probability
+college = [college prob];
+%% New data set attaching probabilities
+q2 = vertcat(elementary,hs,college);
+%% Function from Microeconometrics and Matlab textbook (changed for Epanechnikov Kernel and Silvermans' rule)
+function [yhat,h,w,z] = BiKreg(X,y,x,n,h0)
+%-----------------------------------------------
+% PURPOSE: performs the kernel regression of y
+%          on (bivar) X
+%-----------------------------------------------
+% USAGE: [yhat,h,w,z] = BiKreg(X,y,x,h0)
+% where:  y : N-by-1 dependent variable
+%         X : N-by-2 independent variable
+%         x : n-by-2 points of evaluation
+%        h0 : 2-by-1 bandwidth
+%         n : Scalar, sample size
+%-----------------------------------------------
+% OUTPUT:    h : bandwidths used
+%         yhat : regression evaluated at the
+%                n-by-n grid from columns of x
+%-----------------------------------------------
+
+%--- (1) Create grid of points ------------------
+N = length(y);
+n = size(x, 1);
+[w,z] = meshgrid(x(:,1), x(:,2));
+
+%--- (2) Set Silvermans' rule of thomb bandwidth if not supplied & kernel--
+if nargin < 4 %did not specify bandwidth value
+    sig1 = stdv(X(:,1));
+    h(1) = n^(-1/6)*sig1;
+    sig2 = stdv(X(:,2));
+    h(2) = n^(-1/6)*sig2;
+else
+    h = h0;
+end
+hw = h(1);
+hz = h(2);
+% Epanechnikov Kernel
+krnl = @(u) 0.75*(1-(u.*u)).*(abs(u)<1);
+
+
+%--- (3) Perform bivariate kernel regression!---
+%        Product kernel X(:,1)
+KW = NaN(length(y),size(w,1));
+W = X(:,1);
+for w_ = 1 : size(w,1)
+    wi = w(1,w_);
+    uw = (W - wi)/hw;
+    Kuw = krnl(uw);
+    KW(:,w_) = Kuw;
+end
+
+% Product kernel X(:,2)
+KZ = NaN(length(y),size(z,1));
+Z = X(:,2);
+for z_ = 1 : size(z,1)
+    zi = z(z_, 1);
+    uz = (Z - zi)/hz;
+    Kuz = krnl(uz);
+    KZ(:,z_) = Kuz;
+end
+
+% NW estimator
+yhat = NaN(size(w,1), size(w,2));
+for i = 1 : n
+    for j = 1 : n
+        Ku = KW(:,i).*KZ(:,j);
+        yhat(j,i) = sum(Ku.*y)/sum(Ku);
+    end
+end
+
+return
+end
+
+function graphkernel(w,z,P,P_hat,x,n,k)
+surf(w,z,P_hat)
+if k == 1
+title('Elementary')
+elseif k == 2
+title('High School')
+elseif k == 3
+title('College')
+else
+title('For all')       
+end
+xlabel('nchild', 'FontSize', 14);
+ylabel('age', 'FontSize', 14);
+zlabel('P_ hat', 'FontSize', 14);
+hold on
+scatter3(x(1:n,1),x(1:n,2),P(1:n))
+colormap(bone)
+return
+end

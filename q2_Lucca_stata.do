@@ -1,9 +1,15 @@
 * Keep variables
-keep year empstat hhincome incwage incwage_sp educd age nchild
+keep year empstat hhincome incwage educd age nchild sex marst
 
 * Age restriction
 drop if age > 55
 drop if age < 25
+
+* Only women
+drop if sex == 1
+
+* Only married
+drop if marst >=3
 
 * Keep employed and non employed workers
 drop if empstat == 0 | empstat == 3
@@ -34,17 +40,14 @@ replace Price_Index = 288.28592794627100 if year == 2019
 * Drop negative missing and negative income
 drop if hhincome >= 9999998
 drop if incwage >= 999998
-drop if incwage_sp >= 999998
 drop if hhincome < 0
 drop if incwage < 0
-drop if incwage_sp < 0
 
 * Real income
 generate real_hhincome = hhincome * 100 / ( Price_Index )
 generate real_incwage = incwage * 100 / ( Price_Index )
-generate real_incwage_sp = incwage_sp * 100 / ( Price_Index )
 
-generate incnonlabor = real_hhincome - real_incwage - real_incwage_sp
+generate incnonlabor = real_hhincome - real_incwage
 drop if incnonlabor < 0
 
 * Educ related variables
@@ -72,6 +75,6 @@ drop educd
 drop hhincome
 drop real_hhincome
 drop incwage
-drop incwage_sp
-drop real_incwage_sp
 drop empstat
+drop marst
+drop sex
