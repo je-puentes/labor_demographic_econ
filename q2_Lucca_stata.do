@@ -53,18 +53,42 @@ drop if incnonlabor < 0
 * Educ related variables
 drop if educd <=1
 drop if educd == 999
-
-* Elementary
-g elementary = 0
-replace elementary = 1 if educd > 2 & educd < 30
-
-* High School
-g highschool = 0
-replace highschool = 1 if educd >= 30 & educd < 65
-
-* College
-g college = 0
-replace college = 1 if educd >= 65
+g education = -1
+replace education = 0 if educd == 2
+replace education = 1 if educd == 14
+replace education = 2 if educd == 15
+replace education = 2.5 if educd == 13
+replace education = 3 if educd == 16
+replace education = 4 if educd == 17
+replace education = 5 if educd == 22
+replace education = 5.5 if educd == 21
+replace education = 6 if educd == 23
+replace education = 6.5 if educd == 20
+replace education = 7 if educd == 25
+replace education = 7.5 if educd == 24
+replace education = 8 if educd == 26
+replace education = 9 if educd == 30
+replace education = 10 if educd == 40
+replace education = 11 if educd == 50
+replace education = 12 if educd == 60
+replace education = 12 if educd == 61
+replace education = 12 if educd == 62
+replace education = 12 if educd == 63
+replace education = 12 if educd == 64
+replace education = 12 if educd == 65
+replace education = 13 if educd == 70
+replace education = 13 if educd == 71
+replace education = 14 if educd == 80
+replace education = 15 if educd == 90
+replace education = 16 if educd == 100
+replace education = 16 if educd == 101
+replace education = 17 if educd == 110
+replace education = 18 if educd == 111
+replace education = 19 if educd == 112
+replace education = 20 if educd == 113
+replace education = 20 if educd == 114
+replace education = 20 if educd == 116
+drop if education == -1
 
 * Drop if works but does not receive a wage
 drop if real_incwage == 0 & employed == 1
