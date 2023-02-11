@@ -27,7 +27,7 @@ drop if NLIncome <0
 
 *
 
-npregress kernel employed NLIncome educ nchild age in 1/5000,predict(P_hat D1 D2 D3 D4, replace)
+npregress kernel employed NLIncome educ nchild age in 1/5000, estimator(constant) predict(P_hat D1 D2 D3 D4, replace)
 
 
 /* Doing by hand */
@@ -83,7 +83,7 @@ NW[i1] = sum(v2)/sum(v3)
 /* Comparing the estimates found manueally with the ones found with the stata function*/
 P_hat = st_data(1::5000, "P_hat")
 A = NW:-P_hat
-A[1::50]
+mean(A)
 
 
 
@@ -100,11 +100,20 @@ replace incwage = incwage/Price_Index *100
 
 * Doing it using the function
 
-npregress kernel incwage P_hat in 1/5000,predict(gwP D1, replace)
+npregress kernel incwage P_hat in 1/5000,estimator(constant) predict(gwP D1, replace)
 
-npregress kernel educ P_hat in 1/5000,predict(geP D1, replace)
+/* graph */
+npgraph
 
-npregress kernel age P_hat in 1/5000,predict(gaP D1, replace)
+npregress kernel educ P_hat in 1/5000,estimator(constant) predict(geP D1, replace)
+
+/* graph*/
+npgraph
+
+npregress kernel age P_hat in 1/5000, estimator(constant) predict(gaP D1, replace)
+
+/*graph*/
+npgraph
 
 g e_wp = incwage - gwP
 
