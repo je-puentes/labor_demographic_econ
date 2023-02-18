@@ -1,0 +1,266 @@
+---
+title: "Labor PS"
+format: pdf
+editor: visual
+---
+
+## Question 1: Data Preparation and Analysis
+
+### (a) Use the ACS data set that you have downloaded and cleaned up from IPUMS and plot the yearly mean wages, mean hours worked (unconditional and conditional) and mean employment rates of women aged 15-65 in the downloaded sample
+
+In this question we will load the data of the ACS dataset from IPUMS. The data was cleaned using **Stata** and the do-file can be seen in the folder of this problem set. Since we used the same cleaned dataset to be able to do comparisions, we won't talk any further about the process of cleaning the data.
+
+Now we start by loading some packages in **R** and the data in the code chunk below. Note that we have some comments that are worth reading.\
+
+```{r}
+# Packages
+library(tidyverse) # Package for everything
+library(haven)     # Package for reading dta files 
+library(ggthemes)  # Package for themes
+library(lubridate) # Converts to date format
+library(np)        # Package for non parametric and semiparametric
+library(purrr)
+library(ks)
+
+# set.seed(666)
+set.seed(666)
+
+# Importing data ----------------------------------------------------------
+
+# Important note: we are dealing with a database that has already been cleaned. We will convert the file in a Rdata format so that we can load faster the data.
+
+# Only use this option if you dont't have acess to the Rdata format and use the haven package
+# data_ps <- read_dta(file = "data_PS1.dta")
+
+# Convert to Rdata the data_ps
+# saveRDS(data_ps, file = "data_ps1.rds")
+
+# Load data
+data_ps1 <- as_tibble(readRDS(file =  "data_ps1.rds"))
+```
+
+We now create new variables that we will use for the graphs of this problem. We create the variables *real_hhincome, real_wage, labor_par*, and *non_labor_income*. Respectively, each represents the real household income, the real anual wage, the labor participation, and the non labor income.
+
+```{r}
+# Creates real values of wages
+data_ps1 <- data_ps1 %>%
+  mutate(real_hhincome = (hhincome*100) / Price_Index,
+         real_wage = (incwage * 100) / Price_Index,
+         labor_par = ifelse(empstat %in% c(1,2),1, ifelse( empstat == 3 ,0, NA)),
+         non_labor_income = real_hhincome - real_wage)
+```
+
+### (b) Replicate Table 2 in Mincer (1962). Note: Make sure to impose comparable sample restrictions.
+
+## Question 2: Semi-Parametric, Structural Estimation
+
+Suppose that the utility of the wife over participation and consumption follows the functional form: $$
+U(C, P ; \epsilon)=C+x^{\prime} \alpha(1-P)+\beta(1-P) C+\epsilon(1-P)
+$$ and the wage equation is $$
+w(z, \xi)=z^{\prime} \gamma+\xi
+$$ As shown in class, the observed wage equation can be written as $$
+w(z, \xi)=z^{\prime} \gamma+M(\operatorname{Pr}(P=1 \mid y, z, x))+u
+$$ Using the sub-sample of married women between the ages of 25 and 55, implement the following estimation steps
+
+### (a) Non-parametrically estimate $\operatorname{Pr}(P=1 \mid y, z, x)$ using a kernel regression where $z$ includes completed education and age and $x$ includes a constant, age and current number of children
+
+For this question, we have decided to use both **R** and **Julia** for the calculation. In R there is the package **np** written by Jeffrey S. Racine and Tristen Hayfield for the estimation of nonparametric (and semiparametric) kernel methods with built-in function we use for estimation. We use **Julia** to manually calculate the results because it is better and more efficient at performing complex calculations than **R**.
+
+Initially we start by subsetting the data for women with the characteristics given by the question.
+
+```{r}
+# Question 2 --------------------------------------------------------------
+
+# Utility function
+# U(c, P; e) = c + x'a*(1-P) + b(1-P)c + e(1-P)
+# c: consumption
+# Participation index (=1 if works)
+# x: vector of covariates
+# r threshold value
+  
+
+# 2 - a) Estimation Particiaption probabilities ---------------------------
+# wage equation:
+# w(z,eta) = z'y + M(Pr(P =1| y,z,x )) + u
+
+# Subseting for married women between 25-55
+# We also  subset to not include NA or negative
+# values for each variable
+  m_women_25_55 <- data_ps1 %>%
+    filter(age %in% 25:55, marst %in% c(1,2), hhincome >=0,
+           !is.na(non_labor_income),
+           !is.na(age),
+           !is.na(nchild)) %>%
+    mutate(n_child = as.numeric(nchild),
+           educ = as.numeric(educ)) %>%
+    filter(educd > 1 & educd != 999) %>%  # drop if educd <= 1 or educd == 999
+    mutate(education = -1) %>%  # create new column 'education' with -1 as initial value
+    mutate(education = case_when(
+      educd == 2 ~ 0,
+      educd == 14 ~ 1,
+      educd == 15 ~ 2,
+      educd == 13 ~ 2.5,
+      educd == 16 ~ 3,
+      educd == 17 ~ 4,
+      educd == 22 ~ 5,
+      educd == 21 ~ 5.5,
+      educd == 23 ~ 6,
+      educd == 20 ~ 6.5,
+      educd == 25 ~ 7,
+      educd == 24 ~ 7.5,
+      educd == 26 ~ 8,
+      educd == 30 ~ 9,
+      educd == 40 ~ 10,
+      educd == 50 ~ 11,
+      educd == 60 ~ 12,
+      educd == 61 ~ 12,
+      educd == 62 ~ 12,
+      educd == 63 ~ 12,
+      educd == 64 ~ 12,
+      educd == 65 ~ 12,
+      educd == 70 ~ 13,
+      educd == 71 ~ 13,
+      educd == 80 ~ 14,
+      educd == 90 ~ 15,
+      educd == 100 ~ 16,
+      educd == 101 ~ 16,
+      educd == 110 ~ 17,
+      educd == 111 ~ 18,
+      educd == 112 ~ 19,
+      educd == 113 ~ 20,
+      educd == 114 ~ 20,
+      educd == 116 ~ 20,
+      TRUE ~ education  # if none of the above conditions are true, keep existing value
+    )) %>% 
+    filter(education != -1) 
+  
+```
+
+Since we do not have enough processing power, we will use the sub samples taken randomly without replacement. We will take two samples of size 1000, 5000.
+
+```{r}
+# Take a subsample  because my laptop does not have enough computing
+# power
+n_1 = 1000 # Size of subsample 1 
+n_2 = 5000 # Size of subsample 2 
+
+
+# First subsample n= 1000
+m_women_25_55_n_1 <- m_women_25_55[sample(nrow(m_women_25_55), n_1),] %>%
+                                        mutate(educ = as.factor(educ),
+                                               age = as.numeric(age),
+                                               nchild = n_child)
+
+# Second subsample n= 5000
+m_women_25_55_n_2 <- m_women_25_55[sample(nrow(m_women_25_55), n_2),] %>%
+  mutate(educ = as.factor(educ),
+         age = as.numeric(age),
+         nchild = n_child)
+
+
+
+```
+
+Now, we finally calculate the optimal bandwidth using the linear cross-validation and using a Gaussian mutivariate kernel function. The function perform 5 iterations of the whole process in order to find the the best bandwidth.
+
+```{r}
+  
+# Step 1: Non-parametric estimation of Pr(P = 1 | y,z,x) ------------------
+# a)  Non-parametrically estimate Pr(P = 1|y, z, x) using a kernel regression 
+  # where z includes completed education and age and x includes a constant, 
+  # age and current number of children and y is non labor income
+
+# Bandwidth estimation with Linear Cross-Validation
+bw_par_n1 <- npregbw(formula = labor_par ~ non_labor_income  + educ + age + nchild , 
+                  data = m_women_25_55_n_1, regtype = "lc", 
+                  ckertype = "gaussian")
+
+bw_par_n2 <- npregbw(formula = labor_par ~ non_labor_income  + educ + age + nchild , 
+                     data = m_women_25_55_n_2, regtype = "lc", 
+                     ckertype = "gaussian")
+
+
+```
+
+With the following code we get the results
+
+```{r}
+# Results
+resultados_n1 <- npreg(bw_par_n1) # first sample
+resultados_n2 <- npreg(bw_par_n2) # second sample
+```
+
+| Sample    | Non-labor income *h* | Educ *h*  | Age *h*   | nchild h  |
+|-----------|----------------------|-----------|-----------|-----------|
+| 1000 obs. | 8837.935             | 0.817675  | 4.98267   | 0.8327307 |
+| 5000 obs. | 854086.6             | 0.5154519 | 3.6600053 | 2.836688  |
+
+: Non-parametric estimation of P - local constant
+
+Now, we finally calculate the predicted probabilities of participation using the code chunk below. We also can see the table with descriptive statistics of predicted P. We note that falls in range 0 to 1, and mean of them are near 0.94 in every sample.
+
+| Sample    | Mean      | Sd         | min        | max       |
+|-----------|-----------|------------|------------|-----------|
+| 1000 obs. | 0.9419313 | 0.06002464 | 0          | 1         |
+| 5000 obs. | 0.9483481 | 0.02694107 | 0.09247883 | 0.9709707 |
+
+: Descriptive stats of the predicted P
+
+### (b) Take your predicted working probabilities estimated in part (a) $\widehat{\operatorname{Pr}}(P=1 \mid y, z, x)$ in the sample over which you implemented the non-parametric regression in part (a). Use Robinson's partial regression model to estimate $\gamma$ and $M$. See pg. 62 in the Nonparametrics6.pdf file located in the Readings subfolder of the shared Dropbox folder.
+
+In **R** we can easily perform the Robinson's Partial Regression by using the following command:
+
+```{r}
+# Semi parametric model 
+robinson_reg_n1 <- npplreg(as.numeric(real_wage) ~ educ + age | predicted_p, data = m_women_25_55_n_1)
+robinson_reg_n2 <- npplreg(as.numeric(real_wage) ~ educ + age | predicted_p, data = m_women_25_55_n_2)
+robinson_reg_n3 <- npplreg(as.numeric(real_wage) ~ educ + age | predicted_p, data = m_women_25_55_n_3)
+
+summary(robinson_reg_n1)
+summary(robinson_reg_n2)
+summary(robinson_reg_n3)
+```
+
+| Variable | 1000 obs. | 5000 obs. |
+|----------|-----------|-----------|
+| educ     | 2934.344  | 2613.985  |
+| age      | 141.0934  | -372.652  |
+
+: Estimation of \$\\gamma\$
+
+### (c) Use your estimates for $\gamma$ obtained in part (b) to estimate $\alpha$ and $\beta$ using the Klein and Spady single index estimator. Be careful to adjust the estimator to account for the fact that $\operatorname{Pr}(P=1 \mid y, z, x)=$ $1-F\left(x^{\prime} \alpha+\beta y-\widehat{\gamma}^{\prime} z\right)$.
+
+### (d) Do you fail to reject the theoretical implications of the model? Discuss.
+
+## Question 3: (Fully) Parametric, Structural Estimation
+
+Under the assumption that $\epsilon$ and $\xi$ follow a bivariate normal distribution $$
+\left(\begin{array}{c}
+\epsilon \\
+\xi
+\end{array}\right) \sim \mathcal{N}\left(\left[\begin{array}{l}
+0 \\
+0
+\end{array}\right],\left[\begin{array}{cc}
+\sigma_\epsilon^2 & \rho \sigma_\epsilon \sigma_{\xi} \\
+\rho \sigma_\epsilon \sigma_{\xi} & \sigma_{\xi}^2
+\end{array}\right]\right)
+$$
+
+### (a) Estimate the model using full information maximum likelihood (that is, deriving a likelihood function in which we are estimating the utility function and the wage equation jointly).
+
+### (b) Compare your results with those obtained in Question 2. Discuss.
+
+## Question 4: Marshallian Labor Supply
+
+Take the model we considered in the Estimation Lecture of the Static Intensive Labor Supply: Let the direct utility follow a Stone-Geary form $$
+U=B_0 \ln \left(L-\gamma_L\right)+B_1 \ln \left(C-\gamma_C\right)
+$$ where $$
+\begin{gathered}
+B_0+B_1=1 \\
+C_i-\gamma_C>0 ; \quad L-\gamma_L>0 \\
+B_0=x^{\prime} \tilde{B}_0+\epsilon
+\end{gathered}
+$$
+
+### (a) Suppose that the price of consumption is 1. What are the Marshallian demand functions for consumption and leisure?
