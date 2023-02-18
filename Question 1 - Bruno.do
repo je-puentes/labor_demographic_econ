@@ -1,15 +1,4 @@
 
-use "C:\Users\bromo\OneDrive\Área de Trabalho\FGV - Mestrado\Optativas\Labor\data_PS1.dta", clear
-
-drop if hhincome<0
-
-/* Question 1 - A*/
-g employed = 0
-replace employed = 1 if empstat == 1
-egen mean_labor = mean(employed), by(year)
-scatter mean_labor year
-graph export Question1
-
 /*Question 1 - B*/
 
 * For this question since we don't observe if the child is under 16, 
