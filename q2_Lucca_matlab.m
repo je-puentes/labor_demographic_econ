@@ -5,9 +5,9 @@ q2 = array2table(q2, 'VariableNames', {'year', 'nchild', 'age','employed','real_
 %% 1.a) no constant
 % Considering educ
 % Do nonparametrical estimation
-n=1000000;
+n=100000;
 P = q2(1:n, 4); %participation
-X = q2(1:n, [2 3 6 7 5]); %independent vars and wage
+X = q2(1:n, [2 3 6 7 5 4]); %independent vars and wage
 P = table2array(P);
 X = table2array(X);
 grid_nchild = linspace(0,9,10);
@@ -19,7 +19,7 @@ grid_nonlaborinc = linspace(minnlaborinc,maxnlaborinc,41);
 % The row below will take a while
 tic
 [P_hat,bd] = MultiKreg(X,P,grid_nchild,grid_age,grid_educ,grid_nonlaborinc); %bd gives the bandwidth used
-toc % ~ 25 up to 30 minutes for 500,000; 45 up to 50 minutes for 1,000,000
+toc % ~ 3 min for 100,000; 25 up to 30 minutes for 500,000; 45 up to 50 minutes for 1,000,000
 %% Probability of participation (prob)
 % create a variable, poseduc, to save position of each educ in the grid
 poseduc = zeros(n,1);
@@ -61,7 +61,6 @@ Id = zeros(n,1);
 for i = 1:n
 [dif(i),Id(i)] = min(abs(grid_prob(:) - prob(i)));
 end
-
 for i = 1:n %row
     exp_age(i) = age_hat(Id(i));
 end
@@ -106,18 +105,44 @@ exp_wage = array2table(exp_wage);
 X= [X exp_wage];
 %% Regression
 % Difference from real to predict
-educdiff = table2array(X(:,4))-table2array(X(:,8));
-agediff = table2array(X(:,2))-table2array(X(:,7));
-wagediff = table2array(X(:,5))-table2array(X(:,9));
-prob = table2array(X(:,6));
+educdiff = table2array(X(:,4))-table2array(X(:,9));
+agediff = table2array(X(:,2))-table2array(X(:,8));
+wagediff = table2array(X(:,5))-table2array(X(:,10));
+prob = table2array(X(:,7));
 % OLS
 xdiff = [educdiff agediff];
 [gamma,se] = OLS(wagediff,xdiff);
 gamma
 se
 %% Klein-Spady estimator
-
-
+% C=y+P*w -> we use E(w) with estimated gamma
+exp_wages = age_var*gamma(2) + educ_var*gamma(1);
+% New P; new size
+P = table2array(X(:,6));
+% Nonlabor income
+y = table2array(X(:,3));
+% Consumption
+consumption = P.*exp_wages + y;
+%% Create x to enter the log likelihood maxim. problem
+const = array2table(ones(n,1)); % constant
+nchild = X(:,1);
+age_var = array2table(age_var);
+consumption = array2table(consumption);
+P = array2table(P);
+x=[const consumption age_var nchild P];
+%% Exclude zeros
+x = x(x.consumption ~= 0,:);
+P = x(:,5);
+x = removevars(x,'P');
+x = table2array(x);
+P = table2array(P);
+%% Max likelihood function
+%initial guess
+ig = [1 1 2 1];
+% Created Likelihood function
+options = optimset('Algorithm', 'sqp', 'Display', 'iter','TolX',1e-20,'TolFun',1e-20, 'MaxFunEvals',3000);
+[utility_parameters,LL,exit_flag,output] = fminsearch(@(param)Likelihood(param,P,x),ig,options);
+utility_parameters
 %% Functions
 % OLS regression
 function[Beta,se]=OLS(y,X)
@@ -414,6 +439,22 @@ for i = 1:N
     Ku = krnl(u);
     yhat(i) = sum(Ku.*y)/sum(Ku);
 end
+
+return
+end
+function [LL, ll_i] = Likelihood(params, P, x)
+% x: constant, consumption, age and nchild
+% P: participation
+
+alpha1 = params(1);
+alpha2 = params(2);
+alpha3 = params(3);
+beta = params(4);
+
+T = x(:,2) + alpha1*(1-P).*x(:,1) + alpha2*(1-P).*x(:,3) + alpha3*(1-P).*x(:,4) + beta*(1-P).*x(:,2); %logit transformation
+ll_i = P.*log(T) + (1-P).*log(1-T); % contribution of each observation to
+% the loglikelihood
+LL = -nansum(ll_i);
 
 return
 end
