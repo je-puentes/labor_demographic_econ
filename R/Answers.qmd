@@ -1,6 +1,8 @@
 ---
 title: "Labor PS"
 format: pdf
+execute:
+  eval: false
 editor: visual
 ---
 
@@ -21,15 +23,19 @@ library(lubridate) # Converts to date format
 library(np)        # Package for non parametric and semiparametric
 library(purrr)
 library(ks)
+library(Matrix)   # Faster computations of matrices
 
 # set.seed(666)
 set.seed(666)
 
 # Importing data ----------------------------------------------------------
 
-# Important note: we are dealing with a database that has already been cleaned. We will convert the file in a Rdata format so that we can load faster the data.
+# Important note: we are dealing with a database that has already been cleaned.
+# We will convert the file in a Rdata format so that we can load faster the
+#data.
 
-# Only use this option if you dont't have acess to the Rdata format and use the haven package
+# Only use this option if you dont't have acess to the Rdata format and use the
+# haven package
 # data_ps <- read_dta(file = "data_PS1.dta")
 
 # Convert to Rdata the data_ps
@@ -50,7 +56,135 @@ data_ps1 <- data_ps1 %>%
          non_labor_income = real_hhincome - real_wage)
 ```
 
+And finally, with the following code chunk below, we generate the graphs that are below the code chunk. We won't explain much how to graph because the ggplot grammar of graphs is very easy to understand and do not require much explanation.
+
+```{r}
+
+# For women women aged 15-65
+
+# yearly mean wages total and per hour
+year_mean_wage <- data_ps1 %>%
+  filter(age %in% 15:65, sex == 2, uhrswork > 0,
+         incwage < 999998, real_wage >=0 ) %>%
+  group_by(year) %>%
+  summarise(mean_wage = mean(real_wage, na.rm = T),
+            mean_wage_hour = mean(wage_hour, na.rm = T))
+
+# Plot mean_wage
+plot_wages_year <- ggplot(year_mean_wage, aes(x = year
+                           , y = mean_wage ))+
+  geom_line(color = "#967BB6")+
+  geom_point(color = "#7B1FA2")+
+  theme_few()+
+  labs(title = "Yearly mean real wage - Total", 
+       subtitle = "Women aged 15-65",
+       x = "Year",
+       y = "Mean wage")+
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle= element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_y_continuous(n.breaks = 10)+
+  scale_x_continuous(n.breaks = 2019-2005)
+
+# Plot mean_wage_hour
+plot_wages_hour <- ggplot(year_mean_wage, aes(x = year
+                                              , y = mean_wage_hour ))+
+  geom_line(color = "#967BB6")+
+  geom_point(color = "#7B1FA2")+
+  theme_few()+
+  labs(title = "Yearly mean real wage - per hour", 
+       subtitle = "Women aged 15-65",
+       x = "Year",
+       y = "Mean hourly wage")+
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle= element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_y_continuous(n.breaks = 10)+
+  scale_x_continuous(n.breaks = 2019-2005)
+
+# mean hours worked (unconditional and conditional)
+  mean_hour_conditional <- data_ps1 %>%
+    filter(age %in% 15:65, sex == 2, empstat == 1) %>%
+    mutate(hour_worked = wkswork2*uhrswork) %>%
+    group_by(year) %>%
+    summarise(mean_hours = mean(hour_worked, na.rm = T)) 
+    
+  mean_hour_unconditional <- data_ps1 %>%
+      filter(age %in% 15:65, sex == 2) %>%
+      mutate(hour_worked = wkswork2*uhrswork) %>%
+    group_by(year) %>%
+      summarise(mean_hours = mean(hour_worked, na.rm = T)) 
+
+  # Plot hours worked 
+  plot_hour_worked_Cond <- ggplot(mean_hour_conditional, aes(x = year
+                                                , y = mean_hours ))+
+    geom_line(color = "#967BB6")+
+    geom_point(color = "#7B1FA2")+
+    theme_few()+
+    labs(title = "Yearly hours worked - Conditional", 
+         subtitle = "Women aged 15-65",
+         x = "Year",
+         y = "Mean hours worked")+
+    theme(plot.title = element_text(hjust = 0.5),
+          plot.subtitle= element_text(hjust = 0.5),
+          legend.position = "bottom") +
+    scale_y_continuous(n.breaks = 10)+
+    scale_x_continuous(n.breaks = 2019-2005)
+  
+  
+  plot_hour_worked_uncond <- ggplot(mean_hour_unconditional, aes(x = year
+                                                             , y = mean_hours ))+
+    geom_line(color = "#967BB6")+
+    geom_point(color = "#7B1FA2")+
+    theme_few()+
+    labs(title = "Yearly hours worked - Unconditional", 
+         subtitle = "Women aged 15-65",
+         x = "Year",
+         y = "Mean hours worked")+
+    theme(plot.title = element_text(hjust = 0.5),
+          plot.subtitle= element_text(hjust = 0.5),
+          legend.position = "bottom") +
+    scale_y_continuous(n.breaks = 10)+
+    scale_x_continuous(n.breaks = 2019-2005)
+  
+  
+  
+# mean employment rates of women
+  mean_employment <- data_ps1 %>%
+    filter(age %in% 15:65, sex == 2) %>%
+    group_by(year) %>%
+    summarise(mean_employed = mean(labor_par, na.rm = T)) 
+  
+# Plot of labor participation of women 
+ plot_employment <-  ggplot(mean_employment, aes(x = year, y = mean_employed))+
+    geom_line(color = "#967BB6")+
+    geom_point(color = "#7B1FA2")+
+    theme_few()+
+    labs(title = "Yearly Employment Rate", 
+         subtitle = "Women aged 15-65",
+         x = "Year",
+         y = "Percent employed")+
+    theme(plot.title = element_text(hjust = 0.5),
+          plot.subtitle= element_text(hjust = 0.5),
+          legend.position = "bottom") +
+    scale_y_continuous(n.breaks = 10, labels = scales::percent)+
+    scale_x_continuous(n.breaks = 2019-2005)
+
+```
+
+![Mean employment - women 15-65](plot_employment.pdf){fig-align="center"width="672" height="420"}
+
+![Hours worked per year -Unconditional - women 15-65](plot_hour_worked_uncond.pdf){fig-align="center" width="672" height="420"}
+
+![Hours worked per year -Unconditional - women 15-65](plot_hour_worked_cond.pdf){fig-align="center" width="672" height="420"}
+
+![Hourly wage - women 15-65](plot_wages_hour.pdf){fig-align="center" width="672" height="420"}
+
+![Yearly total wage - women 15-65](plot_wages_year.pdf){fig-align="center" width="672" height="420"}
+
 ### (b) Replicate Table 2 in Mincer (1962). Note: Make sure to impose comparable sample restrictions.
+
+{{< pagebreak >}}
 
 ## Question 2: Semi-Parametric, Structural Estimation
 
@@ -64,9 +198,9 @@ $$ Using the sub-sample of married women between the ages of 25 and 55, implemen
 
 ### (a) Non-parametrically estimate $\operatorname{Pr}(P=1 \mid y, z, x)$ using a kernel regression where $z$ includes completed education and age and $x$ includes a constant, age and current number of children
 
-For this question, we have decided to use both **R** and **Julia** for the calculation. In R there is the package **np** written by Jeffrey S. Racine and Tristen Hayfield for the estimation of nonparametric (and semiparametric) kernel methods with built-in function we use for estimation. We use **Julia** to manually calculate the results because it is better and more efficient at performing complex calculations than **R**.
+For this question, we have decided to use **R** with the **np** package and manually for the calculation. In R there is the package **np** written by Jeffrey S. Racine and Tristen Hayfield for the estimation of nonparametric (and semiparametric) kernel methods with built-in function we use for estimation. We also use **R** to manually calculate the results.
 
-Initially we start by subsetting the data for women with the characteristics given by the question.
+Initially we start by subsetting the data for women with the characteristics given by the question and we create a new definition of education to make it easier to work.
 
 ```{r}
 # Question 2 --------------------------------------------------------------
@@ -190,21 +324,118 @@ resultados_n1 <- npreg(bw_par_n1) # first sample
 resultados_n2 <- npreg(bw_par_n2) # second sample
 ```
 
-| Sample    | Non-labor income *h* | Educ *h*  | Age *h*   | nchild h  |
-|-----------|----------------------|-----------|-----------|-----------|
-| 1000 obs. | 8837.935             | 0.817675  | 4.98267   | 0.8327307 |
-| 5000 obs. | 854086.6             | 0.5154519 | 3.6600053 | 2.836688  |
+| Sample    | NL income *h* | Educ *h*  | Age *h*   | nchild h  |
+|-----------|---------------|-----------|-----------|-----------|
+| 1000 obs. | 8837.935      | 0.817675  | 4.98267   | 0.8327307 |
+| 5000 obs. | 854086.6      | 0.5154519 | 3.6600053 | 2.836688  |
 
-: Non-parametric estimation of P - local constant
+: Non-parametric estimation bandwidth of P using np Package - local constant
 
 Now, we finally calculate the predicted probabilities of participation using the code chunk below. We also can see the table with descriptive statistics of predicted P. We note that falls in range 0 to 1, and mean of them are near 0.94 in every sample.
 
-| Sample    | Mean      | Sd         | min        | max       |
-|-----------|-----------|------------|------------|-----------|
-| 1000 obs. | 0.9419313 | 0.06002464 | 0          | 1         |
-| 5000 obs. | 0.9483481 | 0.02694107 | 0.09247883 | 0.9709707 |
+| Sample    | Mean      | Sd         | min       | max       |
+|:----------|:----------|:-----------|:----------|:----------|
+| 1000 obs. | 0.9419313 | 0.06002464 | 0         | 1         |
+| 5000 obs. | 0.9483481 | 0.02694107 | 0.9247883 | 0.9709707 |
 
-: Descriptive stats of the predicted P
+: Descriptive stats of the predicted P -np
+
+Now, we do it again but manually. We will use the Epechnikov kernel and Silverman's Rule of Thumb.
+
+We start by defining functions that will be used in this problem. We define the function to perform the epanechnikov_kernel that receives as input
+
+```{r}
+# Write auxiliary functions to manually calculate Nadaraya-Watson
+# and the kernel estimator
+
+# Function to calculate the multivariate Epanechnikov kernel
+epanechnikov_kernel <- function(x, y, h) {
+  d <- x - y
+  t <- sqrt(diag(tcrossprod(d, solve(h) %*% d)))
+  ifelse(t < 1, 0.75 * (1 - t^2), 0)
+}
+
+# define the multivariate Nadaraya-Watson estimator
+nadaraya_watson <- function(X,y, H){
+  # Number of observations
+  n <- nrow(X)
+  
+  # Vector of predicted y
+  y_hat <- rep(0, n)
+  
+  # Loop to calculate m(X - x_i)
+  for (i in 1:n) {
+    kernel_weights <- rep(0, n)
+    for (j in 1:n) {
+      kernel_weights[j] <- epanechnikov_kernel(X[j,], X[i,], H)
+    }
+    y_hat[i] <- sum(kernel_weights * y) / sum(kernel_weights)
+  }
+  
+  # Print the estimated values of y
+  y_hat
+}
+
+
+# Estimate the optimal bandwidth using Silverman's rule of thumb
+Silverman <- function(X){
+  n <- nrow(X) # Number of rows
+  d <- ncol(X) # Number of columns 
+  std <- apply(X, 2, sd)  # Sd
+  H <- diag(d) * std * (4 / (d + 2))^(1/(d + 4) ) * (n ^(-1*(1/(d+4))))
+  return(H)
+  } # Returns the diagonal matrix for bandwidth
+
+```
+
+Then, we define the vectors and matrices X, Y, Z and P (predicted participation probability) to represents the variables given by the question and add the suffix n1 or n2 to represent. See the comments in the code for a complete description of the name of each variable. Also note T is column bind of matrices X,Y,Z,, to represent observed labor particpation we use L and H is the Silverman's Bandwidth.
+
+```{r}
+# Subset matrices
+# X variables age education
+X_n1 <- as.matrix(cbind(const = rep(1, times = nrow(m_women_25_55_n_1)),m_women_25_55_n_1[, c("age", "nchild")]))
+X_n2 <- as.matrix(cbind(const = rep(1, times = nrow(m_women_25_55_n_2)),m_women_25_55_n_2[, c("age", "nchild")]))
+
+# Z variables completed education and age
+Z_n1 <- as.matrix(m_women_25_55_n_1[, c("age", "education")])
+Z_n2 <- as.matrix(m_women_25_55_n_2[, c("age", "education")])
+
+# Y non labor income
+Y_n1 <- as.vector(m_women_25_55_n_1[,"non_labor_income"])
+Y_n2 <- as.vector(m_women_25_55_n_2[,"non_labor_income"])
+
+# Matrix containing everything to estimate P
+T_n1 <- as.matrix(cbind(X_n1[,-1], Z_n1, Y_n1))
+T_n2 <- as.matrix(cbind(X_n2[,-1], Z_n2, Y_n2))
+
+# Matrix of labor participation
+L_n1 <- as.vector(m_women_25_55_n_1[,"labor_par"])
+L_n2 <- as.vector(m_women_25_55_n_2[,"labor_par"])
+
+# bandwith Matrix according to Silverman
+H_n1 <- Silverman(T_n1)
+H_n2 <- Silverman(T_n2)
+
+# Estimation of P
+P_n1 <- nadaraya_watson(X = T_n1, y = L_n1, H = H_n1)
+P_n2 <- nadaraya_watson(X = T_n2, y = L_n2, H = H_n2)
+```
+
+We get the following bandwidths and descriptive statistics for the estimation
+
+| Sample    | Non-labor income *h* | Educ *h* | Age *h*  | nchild *h* |
+|-----------|----------------------|----------|----------|------------|
+| 1000 obs. | 55729.29             | 1.515574 | 3.726225 | 0.5274278  |
+| 5000 obs. | 60356.78             | 1.211947 | 3.077618 | 0.4272879  |
+
+: Non-parametric estimation Silverman bandwidth of P using manual - local constant
+
+| Sample    | Mean      | Sd         | min       | max       |
+|-----------|-----------|------------|-----------|-----------|
+| 1000 obs. | 0.952886  | 0.02333114 | 0.90723   | 0.98723   |
+| 5000 obs. | 0.9488085 | 0.01610487 | 0.9025235 | 0.9697569 |
+
+: Descriptive stats of the predicted P - manual
 
 ### (b) Take your predicted working probabilities estimated in part (a) $\widehat{\operatorname{Pr}}(P=1 \mid y, z, x)$ in the sample over which you implemented the non-parametric regression in part (a). Use Robinson's partial regression model to estimate $\gamma$ and $M$. See pg. 62 in the Nonparametrics6.pdf file located in the Readings subfolder of the shared Dropbox folder.
 
@@ -226,15 +457,113 @@ summary(robinson_reg_n3)
 | educ     | 2934.344  | 2613.985  |
 | age      | 141.0934  | -372.652  |
 
-: Estimation of \$\\gamma\$
+: Estimation of gamma coefficients using np
+
+For the manual case we define functions for the univariate case o local constant estimation because our original functions were for multivariate form. We start by defining the Epanechnikov kernel in univariate case, and the nadaraya-watson estimator in univariate case.
+
+```{r}
+# We will need to define additional functions to perform in the univariate case
+# Define the kernel function (Epanechnikov kernel)
+epa_uni <- function(x, x0, h) {
+  u <- abs((x - x0) / h) # argument
+  k <- 0.75 * (1 - u^2) * as.numeric(abs(u) <= 1) # value
+  return(k)
+}
+
+# Univariate NW Regression
+nw_regression <- function(x0, x, y, h) {
+  k <- epa_uni(x, x0, h)
+  sum(k * y) / sum(k)
+}
+```
+
+We then define the bandwidth for each sample. as we can see below in the code.
+
+```{r}
+# Bandwidth for P
+HP_1 <-  sd(P_n1) * (4 / (1 + 2))^(1/(1 + 4) ) * (1000 ^(-1*(1/(1+4))))
+HP_2 <-  sd(P_n2) * (4 / (1 + 2))^(1/(1 + 4) ) * (5000 ^(-1*(1/(1+4))))
+
+```
+
+| Bandwidth | 1000 Obs.   | 5000 Obs.   |
+|-----------|-------------|-------------|
+| h         | 0.006207599 | 0.003105639 |
+
+: Silverman's Bandwidth for predicted P - manual
+
+We use the function sapply and nw_regression to non-parametrically regress each variable and estimate it to obtain $\hat{g_t}, t \in \{y,X\}$ that will be used to to calculate $e_y = y - g_{y}$ and $e_X = X - g_{x}$.
+
+```{r}
+# First Calculate gy 
+# First sample
+gy_n1 <- sapply(P_n1, nw_regression, x = P_n1, y = W_n1, h = HP_1 )
+plot(P_n1, W_n1)
+lines(P_n1, gy_n1, col = "blue", lwd = 2)
+
+# Second sample
+gy_n2 <- sapply(P_n2, nw_regression, x = P_n2, y = W_n2, h = HP_2)
+plot(P_n2, W_n2)
+lines(P_n2, gy_n2, col = "blue", lwd = 2)
+
+# Second: calculate gx
+gx_n1 <- as.matrix(cbind(sapply(P_n1, nw_regression, x = P_n1, y = Z_n1[,1], h = HP_1 ), sapply(P_n1, nw_regression, x = P_n1, y =  Z_n1[,2], h = HP_1 )))
+gx_n2 <- as.matrix(cbind(sapply(P_n2, nw_regression, x = P_n2, y = Z_n2[,1], h = HP_2 ), sapply(P_n2, nw_regression, x = P_n2, y =  Z_n2[,2], h = HP_2 )))
+
+
+# Calculate residual e_y = y - g_y, e_x = X- g_x
+ey_n1 <- W_n1 - gy_n1 # First sample
+ex_n1 <- Z_n1 - gx_n1
+
+ey_n2 <- W_n2 - gy_n2 # Second samples
+ex_n2 <- Z_n2 - gx_n2
+```
+
+We plot below for each variable and sample the nonparametric regression.
+
+![NP regression - Wages on P (1000 obs.)](ker_wage_1000.pdf){fig-align="center" width="672" height="420"}
+
+![NP regression - Wages on P (5000 obs.)](ker_wage_5000.pdf){fig-align="center" width="672" height="420"}
+
+![NP regression - Age on P (1000 obs.)](ker_age_1000.pdf){fig-align="center" width="672" height="420"}
+
+![NP regression - Age on P (5000 obs.)](ker_age_5000.pdf){fig-align="center" width="672" height="420"}
+
+![NP regression - Education on P (1000 obs.)](ker_educ_1000.pdf){fig-align="center" width="672" height="420"}
+
+![NP regression - Education on P (5000 obs.)](ker_educ_5000.pdf){fig-align="center" width="672" height="420"}
+
+With the calculated residuals we regress them to obtain $\hat{\gamma}$ manually.
+
+```{r}
+# Finaly, OLS residuals
+gamma_n1 <- solve(t(ex_n1) %*% ex_n1) %*% t(ex_n1) %*% ey_n1
+gamma_n2 <- solve(t(ex_n2) %*% ex_n2) %*% t(ex_n2) %*% ey_n2
+```
+
+We get the following results:
+
+| Variable | 1000 obs. | 5000 obs. |
+|----------|-----------|-----------|
+| educ     | 1928.1576 | 1541.002  |
+| age      | 173.31590 | 38.54569  |
+
+: Estimation of gamma coefficients manually
 
 ### (c) Use your estimates for $\gamma$ obtained in part (b) to estimate $\alpha$ and $\beta$ using the Klein and Spady single index estimator. Be careful to adjust the estimator to account for the fact that $\operatorname{Pr}(P=1 \mid y, z, x)=$ $1-F\left(x^{\prime} \alpha+\beta y-\widehat{\gamma}^{\prime} z\right)$.
 
+The built-in Klein and Spady estimation does not permit to change the betas, so for this question we will only manually perform the estimation using a loglikelihood approach.
+
 ### (d) Do you fail to reject the theoretical implications of the model? Discuss.
+
+
+{{< pagebreak >}}
 
 ## Question 3: (Fully) Parametric, Structural Estimation
 
-Under the assumption that $\epsilon$ and $\xi$ follow a bivariate normal distribution $$
+Under the assumption that $\epsilon$ and $\xi$ follow a bivariate normal distribution
+
+$$
 \left(\begin{array}{c}
 \epsilon \\
 \xi
@@ -249,13 +578,174 @@ $$
 
 ### (a) Estimate the model using full information maximum likelihood (that is, deriving a likelihood function in which we are estimating the utility function and the wage equation jointly).
 
+In this exercise we will use the estimation procedure in the slides of Static Labor Participation Estimation. In that specific slide we have:
+
+"... the likelihood can be written in the following way: $$
+\mathcal{L}(\theta ; \text { data })=\prod_{i=1}^N\left(\operatorname{Pr}\left(P_i=1, w=w_i \mid y_i, \mathbf{z}, \mathbf{X}\right)\right)^{P_i}\left(\operatorname{Pr}\left(P_i=0 \mid y_i, \mathbf{z}, \mathbf{X}\right)\right)^{1-P_i}
+$$ where:
+
+$$
+\operatorname{Pr}\left(P_i=0 \mid y_i, \mathbf{z}, \mathbf{X}\right)=\Phi\left(\frac{\mathbf{X}_i^{\prime} \alpha+\beta y_i-\mathbf{z}^{\prime} \gamma}{\sigma_\nu}\right)
+$$
+
+with $\sigma_\nu^2=\sigma_\epsilon^2+\sigma_{\xi}^2-2 \rho \sigma_\epsilon \sigma_{\xi}$, and $$
+\begin{aligned}
+& \operatorname{Pr}\left(P_i=1, w=w_i \mid y_i, \mathbf{z}, \mathbf{X}\right)=\frac{1}{\sigma_{\xi}} \phi\left(\frac{w_i-\mathbf{z}^{\prime} \gamma}{\sigma_\nu}\right) \\
+& \times \Phi\left(\frac{w_i-\mathbf{X}_i^{\prime} \alpha-\beta y_i-\rho_{\frac{\sigma_\epsilon}{\sigma_{\xi}}}\left[w_i-\mathbf{z}_i^{\prime} \gamma\right]}{\sigma_\epsilon \sqrt{1-\rho^2}}\right) \\
+&
+\end{aligned}
+$$ " In our context, if we let $X_{i}^{\prime} = [1, age_{i}, nchild_{i}]^{\prime}$, $y_{i}$ is non-labor income and $z_{i}^{\prime} = [age_{i}, education_{i}]$,and $\Phi(.), \phi(.)$ represents the cdf and density of a standard normal.
+
+We do it by first defining the log_likelihood for each sample as we see below:
+
+```{r}
+# 3)Under the assumption that epsilon and ξ follow a bivariate normal distribution
+# 3-a) full information maximum likelihood --------------------------------
+#  Estimate the model using full information maximum likelihood 
+# (that is, deriving a likelihood function in which we are estimating 
+# the utility function and the wage equation jointly).
+# Z = educ and age
+# X = const, age , nchild
+# y = non labor income
+
+# Loglikelihood P-N First sample of 1000bs
+log_likelihood_n1 <- function(par){
+  
+  # Dictionary
+  # par[1] = alpha_1
+  # par[2] = alpha_2
+  # par[3] = alpha_3
+  # par[4] = beta
+  # par[5] = gamma_1
+  # par[6] = gamma_2
+  # par[7] = sigma_e
+  # par[8] = sigma_xi
+  # par[9] = rho
+  
+  
+  # sigma_v
+  sigma_v <- sqrt(par[7]^2 + par[8]^2 - 2*par[9]*par[7]*par[8])
+  
+  # Here we define the Argument of Pr(P=0)
+  arg_pr_0 <- (par[1] + par[2]*X_n1[,2] + par[3]*X_n1[,3] + par[4]*Y_n1 - par[5]*Z_n1[,1] - par[6]*Z_n1[,2]) / sigma_v 
+  
+  # Define we properly define Pr(0)
+  pr_0 <- pnorm(arg_pr_0) 
+  pr_0 <- exp(pr_0) / (1 + exp(pr_0))
+  
+  # Here we define Arg 1 of Pr(1), the argument of the density normal
+  arg_pr_1 <- (W_n1 - par[5]*Z_n1[,1] - par[6]*Z_n1[,2]) / sigma_v
+  
+  # Here we define the Arg 2 of Pr(1), the argument of the cdf normal
+  arg_pr_2 <-  W_n1 - par[1] - par[2]*X_n1[,2]- par[3]*X_n1[,3] -par[4]*Y_n1
+  arg_pr_2 <-  arg_pr_2 -(par[9]*par[7]/sigma_v)*(W_n1-par[5]*Z_n1[,1]-par[6]*Z_n1[,2])
+  arg_pr_2 <- arg_pr_2 / (par[7]*sqrt(1-par[9]^2))
+    
+  # Values of Pr(1)
+  pr_1 <- (1/par[8]) * dnorm(arg_pr_1) * rnorm(arg_pr_2) 
+  pr_1 <- exp(pr_1)/(1 + exp(pr_1))
+  
+  # Objective function
+  log_like = sum(L_n1*log(pr_1) + (1 - L_n1)*(log(pr_0)))
+  return(log_like)
+}
+```
+
+Now we define the same function but for the sample of 5000 obs.
+
+```{r}
+log_likelihood_n2 <- function(par){
+  
+  # Dictionary
+  # par[1] = alpha_1
+  # par[2] = alpha_2
+  # par[3] = alpha_3
+  # par[4] = beta
+  # par[5] = gamma_1
+  # par[6] = gamma_2
+  # par[7] = sigma_e
+  # par[8] = sigma_xi
+  # par[9] = rho
+  
+  
+  # sigma_v
+  sigma_v <- sqrt(par[7]^2 + par[8]^2 - 2*par[9]*par[7]*par[8])
+  
+  # Arg pr_0
+  arg_pr_0 <- (par[1] + par[2]*X_n2[,2] + par[3]*X_n2[,3] + par[4]*Y_n2 - par[5]*Z_n2[,1] - par[6]*Z_n2[,2]) / sigma_v 
+  
+  # Define Pr(0)
+  pr_0 <- pnorm(arg_pr_0) 
+  pr_0 <- exp(pr_0) / (1 + exp(pr_0))
+  
+  # Arg 1 of pR(1)
+  arg_pr_1 <- (W_n2 - par[5]*Z_n2[,1] - par[6]*Z_n2[,2]) / sigma_v
+  
+  # Arg 2 de pr2
+  arg_pr_2 <-  W_n2 - par[1] - par[2]*X_n2[,2]- par[3]*X_n2[,3] -par[4]*Y_n2
+  arg_pr_2 <-  arg_pr_2 -(par[9]*par[7]/sigma_v)*(W_n2-par[5]*Z_n2[,1]-par[6]*Z_n2[,2])
+  arg_pr_2 <- arg_pr_2 / (par[7]*sqrt(1-par[9]^2))
+  
+  # Pr(1)
+  pr_1 <- (1/par[8]) * dnorm(arg_pr_1) * rnorm(arg_pr_2) 
+  pr_1 <- exp(pr_1)/(1 + exp(pr_1))
+  
+  # Objective
+  log_like = sum(L_n2*log(pr_1) + (1 - L_n2)*(log(pr_0)))
+  return(log_like)
+}
+```
+
+Finally with following commands we optimize the log likelihood function in order to find the parameters. For initial values we could use the *lucky guess* which are values we previously estimated and know are near the optimum or we can start by using a random draw of number between -100 and 100 and keep iterating the process until we converge to the desired point.
+
+```{r}
+
+# Guesses
+lucky_guess <- c(9.156, 0.858, -0.609, 1.265, 1232.229, 60.274,100, 100, 0)
+random_guess <- sample(-100:100, 9)
+
+
+#  See if has correct number of parameters =9
+length(lucky_guess)
+length(random_guess)
+
+# Optim with luck_guess
+optim(lucky_guess, log_likelihood_n1, method = "Nelder-Mead")
+optim(lucky_guess, log_likelihood_n2, method = "Nelder-Mead")
+
+# Optim with random_guess
+optim(random_guess, log_likelihood_n1, method = "Nelder-Mead")
+optim(random_guess, log_likelihood_n2, method = "Nelder-Mead")
+```
+
+| Parameter                | 5000 Obs.  | 1000 Obs   |
+|--------------------------|------------|------------|
+| Con$\alpha_{1}$          | 56.35703   | 49.70609   |
+| Age $\alpha_{2}$         | 47.66128   | -26.41636  |
+| nchild $\alpha_3$        | 44.87264   | 34.93082   |
+| Non-Labor Income $\beta$ | -219.79045 | -149.24950 |
+| Age $\gamma_1$           | 1277.57623 | 1322.04343 |
+| education $\gamma_2$     | 113.59084  | 145.01691  |
+| $\sigma_{\epsilon}$      | 145.38495  | 122.68997  |
+| $\sigma_{\chi}$          | 149.16555  | 103.24569  |
+| $\rho$                   | 40.25317   | 103.24569  |
+| Optim Value              | -3465.75   | -693.1539  |
+
+: Estimation Parametric-Structural
+
 ### (b) Compare your results with those obtained in Question 2. Discuss.
 
+
+{{< pagebreak >}}
 ## Question 4: Marshallian Labor Supply
 
 Take the model we considered in the Estimation Lecture of the Static Intensive Labor Supply: Let the direct utility follow a Stone-Geary form $$
 U=B_0 \ln \left(L-\gamma_L\right)+B_1 \ln \left(C-\gamma_C\right)
-$$ where $$
+$$
+
+where
+
+$$
 \begin{gathered}
 B_0+B_1=1 \\
 C_i-\gamma_C>0 ; \quad L-\gamma_L>0 \\
