@@ -172,7 +172,7 @@ plot_wages_hour <- ggplot(year_mean_wage, aes(x = year
 
 ```
 
-![Mean employment - women 15-65](plot_employment.pdf){fig-align="center"width="672" height="420"}
+![Mean employment - women 15-65](plot_employment.pdf){fig-align="center" width="672" height="420"}
 
 ![Hours worked per year -Unconditional - women 15-65](plot_hour_worked_uncond.pdf){fig-align="center" width="672" height="420"}
 
@@ -183,6 +183,167 @@ plot_wages_hour <- ggplot(year_mean_wage, aes(x = year
 ![Yearly total wage - women 15-65](plot_wages_year.pdf){fig-align="center" width="672" height="420"}
 
 ### (b) Replicate Table 2 in Mincer (1962). Note: Make sure to impose comparable sample restrictions.
+
+We replicate the table usign the following
+
+```{r}
+# 1-b) Mincer (1962) table ------------------------------------------------
+data_mincer <- data_ps1 %>%
+   # Keep married couples
+   filter(marst <= 2) %>%
+   # Keep heads of household
+   filter(relate == 1 & relate_sp == 1) %>%
+   # Head is unemployed or not in the Labor Force
+   filter(!(relate == 1 & empstat > 1)) %>%
+   filter(!(relate_sp == 1 & empstat_sp > 1)) %>%
+   # Keep only couples with  person that identifies as white
+   filter(race == 1 & race_sp == 1)
+ 
+ # Definition of groups
+ 
+ # Under 35 - elementary school
+ under35_smallch_elem_FT <- data_mincer %>%
+   filter(age <= 35 & nchlt5 != 0 & educd > 2 & 
+            educd < 30 & uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ under35_smallch_elem_NFT <- data_mincer %>%
+   filter(age <= 35 & nchlt5 != 0 & educd > 2 & 
+            educd < 30 & uhrswork < 30 
+          & uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ under35_noch_elem_FT <- data_mincer %>%
+   filter(age <= 35 & nchlt5 == 0 & educd > 2 & 
+            educd < 30 & uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ under35_noch_elem_NFT <- data_mincer %>%
+   filter(age <= 35 & nchlt5 == 0 & educd > 2 & 
+            educd < 30 & uhrswork < 30 & uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ # Under 55 - elementary school
+ under55_elem_FT <- data_mincer %>%
+   filter(age > 35 & age <= 55 & educd > 2 &
+            educd < 30 & uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ under55_elem_NFT <- data_mincer %>%
+   filter(age > 35 & age <= 55 & educd > 2 & educd < 30 &
+            uhrswork < 30 & uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ # Older than 55 - elementary school
+ older55_elem_FT <- data_mincer %>%
+   filter(age > 55 & educd > 2 & educd < 30 & uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ older55_elem_NFT <- data_mincer %>%
+   filter(age > 55 & educd > 2 & educd < 30 &
+            uhrswork < 30 & uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ # Under 35 - high school
+ under35_smallch_hs_FT <- data_mincer %>% 
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ under35_smallch_hs_NFT <- data_mincer %>% 
+   filter(age <= 35, nchlt5 != 0, educd >= 30,
+          educd < 65, uhrswork < 30, uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ under35_noch_hs_FT <- data_mincer %>% 
+   filter(age <= 35, nchlt5 == 0, educd >= 30,
+          educd < 65, uhrswork >= 30) %>% 
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ 
+ under35_noch_hs_NFT <- data_mincer %>%
+   filter(age <= 35, nchlt5 == 0, educd >= 30, educd < 65,
+          uhrswork < 30, uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ # Under 55 - high school
+ under55_hs_FT <- data_mincer %>% 
+   filter(age > 35, age <= 55, educd >= 30,
+          educd < 65, uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ under55_hs_NFT <- data_mincer %>% 
+   filter(age > 35, age <= 55, educd >= 30, educd < 65,
+          uhrswork < 30, uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ # Older than 55 - high school
+ older55_elem_FT <- data_mincer %>%
+   filter(age > 55, educd >= 30,
+          educd < 65, uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ 
+ older55_elem_NFT <- data_mincer %>% 
+   filter(age > 55, educd >= 30, educd < 65,
+          uhrswork < 30, uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ # Under 35 - college
+ under35_smallch_college_FT <- data_mincer %>%
+   filter(age <= 35, nchlt5 != 0, educd >= 65,
+          educd <= 116, uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ 
+ under35_smallch_college_NFT <- data_mincer %>%
+   filter(age <= 35, nchlt5 != 0, educd >= 65,
+          educd <= 116, uhrswork < 30, uhrswork > 0)%>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ 
+ under35_noch_college_FT <- data_mincer %>%
+   filter(age <= 35, nchlt5 == 0, educd >= 65,
+          educd <= 116, uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ 
+ under35_noch_college_NFT <- data_mincer %>% 
+   filter(age <= 35, nchlt5 == 0, educd >= 65, 
+          educd <= 116, uhrswork < 30, uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ # Under 55 - college
+ under55_college_FT <- data_mincer %>% filter(age > 35, age <= 55, educd >= 65,
+                                              educd <= 116, uhrswork >= 30) %>%
+   summarize(count = n()) %>%
+   pull(count)
+ 
+ 
+ under55_college_NFT <- data_mincer %>%
+   filter(age > 35, age <= 55, educd >= 65,
+          educd <= 116, uhrswork < 30, uhrswork > 0) %>%
+   summarize(count = n()) %>%
+   pull(count)
+```
 
 {{< pagebreak >}}
 
@@ -556,7 +717,6 @@ The built-in Klein and Spady estimation does not permit to change the betas, so 
 
 ### (d) Do you fail to reject the theoretical implications of the model? Discuss.
 
-
 {{< pagebreak >}}
 
 ## Question 3: (Fully) Parametric, Structural Estimation
@@ -735,11 +895,11 @@ optim(random_guess, log_likelihood_n2, method = "Nelder-Mead")
 
 ### (b) Compare your results with those obtained in Question 2. Discuss.
 
+{{< pagebreak >}} ## Question 4: Marshallian Labor Supply
 
-{{< pagebreak >}}
-## Question 4: Marshallian Labor Supply
+Take the model we considered in the Estimation Lecture of the Static Intensive Labor Supply: Let the direct utility follow a Stone-Geary form
 
-Take the model we considered in the Estimation Lecture of the Static Intensive Labor Supply: Let the direct utility follow a Stone-Geary form $$
+$$
 U=B_0 \ln \left(L-\gamma_L\right)+B_1 \ln \left(C-\gamma_C\right)
 $$
 
@@ -754,3 +914,110 @@ B_0=x^{\prime} \tilde{B}_0+\epsilon
 $$
 
 ### (a) Suppose that the price of consumption is 1. What are the Marshallian demand functions for consumption and leisure?
+
+### c) Derive a similar moment using the Marshallian demand for the consumption of $C$. Combine this moment with the moment in part (b) to estimate the parameters of the model using GMM with data from the data set used in Question 1 but restrict your sample in the following way:
+
+-   Keep only the observations of married men who are between 25 and 55 years old at the time of the survey
+-   Keep only observations for 2015
+
+```{r}# 4-c) GMM  ---------------------------------------------------------------}
+
+#| Subset obsevations
+data_gmm <- data_ps1 %>%
+  filter(year == 2015 & marst >=3 & age %in% 25:55) %>%
+  filter(educd > 1 & educd != 999) %>%  # drop if educd <= 1 or educd == 999
+  mutate(education = -1) %>%  # create new column 'education' with -1 as initial value
+  mutate(education = case_when(
+    educd == 2 ~ 0,
+    educd == 14 ~ 1,
+    educd == 15 ~ 2,
+    educd == 13 ~ 2.5,
+    educd == 16 ~ 3,
+    educd == 17 ~ 4,
+    educd == 22 ~ 5,
+    educd == 21 ~ 5.5,
+    educd == 23 ~ 6,
+    educd == 20 ~ 6.5,
+    educd == 25 ~ 7,
+    educd == 24 ~ 7.5,
+    educd == 26 ~ 8,
+    educd == 30 ~ 9,
+    educd == 40 ~ 10,
+    educd == 50 ~ 11,
+    educd == 60 ~ 12,
+    educd == 61 ~ 12,
+    educd == 62 ~ 12,
+    educd == 63 ~ 12,
+    educd == 64 ~ 12,
+    educd == 65 ~ 12,
+    educd == 70 ~ 13,
+    educd == 71 ~ 13,
+    educd == 80 ~ 14,
+    educd == 90 ~ 15,
+    educd == 100 ~ 16,
+    educd == 101 ~ 16,
+    educd == 110 ~ 17,
+    educd == 111 ~ 18,
+    educd == 112 ~ 19,
+    educd == 113 ~ 20,
+    educd == 114 ~ 20,
+    educd == 116 ~ 20,
+    TRUE ~ education  # if none of the above conditions are true, keep existing value
+  )) %>% 
+  filter(education != -1) 
+
+# Variables in matrix form
+T <- as.matrix(data_gmm[,"wkswork2"])
+Y <- as.matrix(data_gmm[,"non_labor_income"])   
+W <- as.matrix(data_gmm[,"incwage"]) 
+X <- as.matrix(data_gmm[,c("age", "educ", "nchild")])   
+L <- 52 - T
+C <- Y + W*T - W*L 
+
+
+
+gmm_objective <- function(beta) {
+  
+  # Define B_0
+  B_0 <- c(beta[3], beta[4], beta[5])
+  
+  # Leisure moment function
+  g1 <- mean(colMeans(X %*% (W*beta[1] + (X %*% B_0 * (Y + W*T - beta[2] - beta[1]*W) - W*L))))  
+  # Consumption moment function
+  g2 <- mean(colMeans(X*(beta[2] + (1- X %*% t(B_0))*(Y+W*T-beta[2]-beta[1]*W*X) + C)))  
+  # Roy Identity moment
+  Roy_1 <-  t(X %*% B_0)*(-Y/(W^2) + beta[1]/(W^2))
+  Roy_2 <- Y/W - beta[2]/W -beta[1]
+  Roy_3 <- (1 - X %*% t(B_0))*(T-beta[1])
+  Roy_4 <- Y +W*T -beta[2] -beta[1] *W
+  Roy_5 <- t(X %*% B_0)/W
+  Roy_6 <- (1- X %*% t(B_0))
+  
+  # Roy's vector
+  Roy <- (Roy_1/Roy_2 + Roy_3/Roy_4) / (Roy_5/Roy_2 + Roy_6/Roy_4)
+  Marshall_leisure <- beta[1] + (X %*% B_0) %*% (Y + W*T - beta[2] - beta[1]*W)
+  
+  # Moment Marshall_leisure - Roy
+  g3 <-  mean(Marshall_leisure - Roy)
+  
+  # Leisure demand moment
+  g4 <- mean(colMeans(W*L - W*beta[1] - (X %*% t(B_0)) * (Y + W*T - beta[2] - beta[1]*W)))
+  
+  # Consumption demand moment
+  g5 <- mean(C - beta[2] - (1 - X %*% t(B_0)) * (Y + W*T - beta[2] - beta[1]*W))
+  
+
+  # g objective
+  g <- c(g1,g2,g3,g4,g5)
+  
+  # Objective
+  obj <- g %*% t(g)
+  
+  return(obj)
+  
+}
+
+
+optim(c(1,1,0,0,0), gmm_objective)
+
+```

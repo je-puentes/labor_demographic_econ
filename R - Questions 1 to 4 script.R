@@ -167,10 +167,6 @@ plot_wages_hour <- ggplot(year_mean_wage, aes(x = year
 
 # 1-b) Mincer (1962) table ------------------------------------------------
 data_mincer <- data_ps1 %>%
-   # keep varaibles we will use
-   select( year, empstat, sex, age, wkswork2, 
-          marst, relate, relate_sp, empstat, empstat_sp,
-          race, race_sp, nchlt5, educd, uhrswork) %>%
    # Keep married couples
    filter(marst <= 2) %>%
    # Keep heads of household
