@@ -1,26 +1,26 @@
 {
-    "id": "BD4ECD23",
+    "id": "FFE1E1B3",
     "path": "C:/Users/puent/OneDrive/Área de Trabalho/labor_demographic_econ/R/labor_ps1.R",
     "project_path": "labor_ps1.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "2229747545",
     "contents": "",
-    "dirty": true,
-    "created": 1675630628124.0,
+    "dirty": false,
+    "created": 1676821107377.0,
     "source_on_save": false,
-    "relative_order": 1,
+    "relative_order": 2,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "119,0",
-        "scrollLine": "110"
+        "cursorPosition": "741,0",
+        "scrollLine": "736"
     },
     "folds": "",
-    "lastKnownWriteTime": 1675646920,
+    "lastKnownWriteTime": 1676855517,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1675707051699,
+    "last_content_update": 1676855517198,
     "read_only": false,
     "read_only_alternatives": []
 }

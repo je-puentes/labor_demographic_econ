@@ -666,6 +666,7 @@ nw_educ_n2 <- base_graph_n2 +
   scale_y_continuous(n.breaks = 14)+
   scale_x_continuous(n.breaks = 8)
 
+# Save graphs
 ggsave(plot = nw_wage_n1, file = "ker_wage_1000.pdf")
 ggsave(plot = nw_wage_n2, file = "ker_wage_5000.pdf")
 
@@ -713,8 +714,9 @@ gamma_z_n2 = Z_n2 %*% gamma_n2
 # Define objective function
 log_like_n1 <- function(beta){
   # Step 1: Compute the kernel weights
-  X <- as.matrix(cbind(X_n1, Y_n1)) %*% beta - gamma_z_n1  # predictor variables matrix
-  y <- L_n1 # response variable vector (labor par)
+  # predictor variables matrix
+  X <-c(X_n1[,1]*beta[1] + X_n1[,2]*beta[2] + X_n1[,3]*beta[3] + Y_n1*beta[4] + Z_n1[,1]*gamma_z_n1[1] + Z_n1[,2]*gamma_z_n1[2]) 
+  y <- c(L_n1) # response variable vector (labor par)
   n <- nrow(X) # number of observations
   d <- ncol(X) # number of predictor variables
   # bandwidth parameter estimated according to Silverman's rule of thumb
@@ -726,18 +728,19 @@ log_like_n1 <- function(beta){
   
 
   # Define P
-  P <- y - y_pred
+  P <- 1 - y_pred
+  P <- exp(P) / (1 -  exp(P))
   
   # Step 3: calculate objective function
   # Log of the value
-  log_val <- y*(log(P)) + (1 - y) *(1 - log(P))
+  log_val <- c(y*(log(P)) + (1 - y) *(1 - log(P)))
   objective <- sum(log_val)
   
   return(objective)
 }
 
 
-
+optim(c(0,0,0,0,0), log_like_n1)
 
 
 # 3)Under the assumption that epsilon and ξ follow a bivariate normal distribution
@@ -856,11 +859,18 @@ optim(random_guess, log_likelihood_n2, method = "Nelder-Mead")
 
 # 4-c) GMM  ---------------------------------------------------------------
 
+# Prepare data to be used in the case of estimation of the GMM
 data_gmm <- data_ps1 %>%
-  filter(year == 2005 & marst >=3 & age %in% 25:55) %>%
+  filter(year == 2015 & marst <=3 & age %in% 25:55 & hhincome > 0 & inctot >0) %>%
   filter(educd > 1 & educd != 999) %>%  # drop if educd <= 1 or educd == 999
-  mutate(education = -1) %>%  # create new column 'education' with -1 as initial value
-  mutate(education = case_when(
+  mutate(education = -1) %>% 
+  filter(hhincome >= 0) %>%
+  filter(inctot >= 0) %>%
+  filter(age >= 25 & age <= 55) %>%
+  filter(marst < 3) %>%
+  filter(non_labor_income >= 0) %>%
+  filter(!(educd <= 1 | educd == 999)) %>%
+  mutate(educ = case_when(
     educd == 2 ~ 0,
     educd == 14 ~ 1,
     educd == 15 ~ 2,
@@ -878,77 +888,81 @@ data_gmm <- data_ps1 %>%
     educd == 40 ~ 10,
     educd == 50 ~ 11,
     educd == 60 ~ 12,
-    educd == 61 ~ 12,
-    educd == 62 ~ 12,
-    educd == 63 ~ 12,
-    educd == 64 ~ 12,
-    educd == 65 ~ 12,
     educd == 70 ~ 13,
-    educd == 71 ~ 13,
     educd == 80 ~ 14,
     educd == 90 ~ 15,
     educd == 100 ~ 16,
-    educd == 101 ~ 16,
     educd == 110 ~ 17,
     educd == 111 ~ 18,
     educd == 112 ~ 19,
     educd == 113 ~ 20,
-    educd == 114 ~ 20,
-    educd == 116 ~ 20,
-    TRUE ~ education  # if none of the above conditions are true, keep existing value
-  )) %>% 
-  filter(education != -1) 
+    TRUE ~ NA_real_)) %>%
+  filter(!is.na(educ))
+
+# See dimensions of data 10404 x 65
+dim(data_gmm)
 
 # Variables in matrix form
 T <- as.matrix(data_gmm[,"wkswork2"])
 Y <- as.matrix(data_gmm[,"non_labor_income"])   
-W <- as.matrix(data_gmm[,"incwage"]) 
+W <- as.matrix(data_gmm[,"real_wage"]) 
 X <- as.matrix(data_gmm[,c("age", "educ", "nchild")])   
 L <- 52 - T
 C <- Y + W*T - W*L 
 
-
-
+# Objective function
 gmm_objective <- function(beta) {
   
-  # Define B_0
-  B_0 <- c(beta[3], beta[4], beta[5])
+  # B0
+  B0 <- c(beta[3], beta[4], beta[5])
   
   # Leisure moment function
-  g1 <- mean(colMeans(X %*% (W*beta[1] + (X %*% B_0 * (Y + W*T - beta[2] - beta[1]*W) - W*L))))  
+  g1 <- mean(colMeans(X * c(W * beta[1] + (X %*% B0) * (Y + W * T - beta[2] - beta[1] * W) - W * L)))
+  
   # Consumption moment function
-  g2 <- mean(colMeans(X*(beta[2] + (1- X %*% t(B_0))*(Y+W*T-beta[2]-beta[1]*W*X) + C)))  
-  # Roy Identity moment
-  Roy_1 <-  t(X %*% B_0)*(-Y/(W^2) + beta[1]/(W^2))
-  Roy_2 <- Y/W - beta[2]/W -beta[1]
-  Roy_3 <- (1 - X %*% t(B_0))*(T-beta[1])
-  Roy_4 <- Y +W*T -beta[2] -beta[1] *W
-  Roy_5 <- t(X %*% B_0)/W
-  Roy_6 <- (1- X %*% t(B_0))
+  g2 <- mean(colMeans(X * c(beta[2] + (1 - X %*% B0) * (Y + W * T - beta[2] - beta[1] * W) - C)))
   
-  # Roy's vector
-  Roy <- (Roy_1/Roy_2 + Roy_3/Roy_4) / (Roy_5/Roy_2 + Roy_6/Roy_4)
-  Marshall_leisure <- beta[1] + (X %*% B_0) %*% (Y + W*T - beta[2] - beta[1]*W)
+  # Roy's Identity moment
+  Roy_1 <- c(X %*% B0) * c(-Y / (W^2) + beta[2] / (W^2))
+  Roy_2 <- c(Y/W + T - beta[2]/W - beta[1])
+  Roy_3 <- c((1 - X %*% B0) * (T - beta[1]))
+  Roy_4 <- c(Y + W*T - beta[2] - beta[1]*W)
+  Roy_5 <- c(X %*% B0 / W)
+  Roy_6 <- c(1 - X %*% B0)
   
-  # Moment Marshall_leisure - Roy
-  g3 <-  mean(Marshall_leisure - Roy)
+  # Roy
+  Roy <- c(-(Roy_1 / Roy_2 + Roy_3 / Roy_4) / (Roy_5 / Roy_2 + Roy_6 / Roy_4))
+  Roy <- Roy[!is.na(Roy)]
+  
+  # Marshall leisure
+  Marshall_leisure <- c(beta[1] + (X %*% B0) * (Y + W * T - beta[2] - beta[1] * W))
+  Marshall_leisure <- Marshall_leisure[!is.na(Roy)]
+  
+  # Moment Marshall - Roy
+  difference <- c(Marshall_leisure - Roy)
+  g3 <- mean(difference[difference < Inf], na.rm = T)
   
   # Leisure demand moment
-  g4 <- mean(colMeans(W*L - W*beta[1] - (X %*% t(B_0)) * (Y + W*T - beta[2] - beta[1]*W)))
+  g4 <- mean(colMeans(W * L - W * beta[1] - (X %*% B0) * (Y + W * T - beta[2] - beta[1] * W)))
   
   # Consumption demand moment
-  g5 <- mean(C - beta[2] - (1 - X %*% t(B_0)) * (Y + W*T - beta[2] - beta[1]*W))
+  g5 <- mean(C - beta[2] - (1 - X %*% B0) * (Y + W * T - beta[2] - beta[1] * W))
   
-
-  # g objective
-  g <- c(g1,g2,g3,g4,g5)
+  # Concatenate all moments
+  g <- c(g1, g2, g3, g4, g5)
   
-  # Objective
-  obj <- g %*% t(g)
-  
-  return(obj)
-  
+  # Objective function
+  results <-  as.numeric(t(g) %*% g)
+  return(results)
 }
 
+# Estimation
+optim(c(1,1,0,0,0), gmm_objective, method = "Nelder-Mead")
+optim(c(5,5,5,5,5), gmm_objective, method = "Nelder-Mead")
+optim(c(10,10,10,10,10), gmm_objective, method = "Nelder-Mead")
 
-optim(c(1,1,0,0,0), gmm_objective)
+#
+mean(c(-(1--0.03629679)*((T -3.82399792) *W -T *W)/(W^2)))
+mean(-(1--1.087347)*((T-7.325980)*W-T*W)/(W^2))
+mean(-(1--2.170245)*((T -5.645545) *W -T * W)/(W^2))
+
